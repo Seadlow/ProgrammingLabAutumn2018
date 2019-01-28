@@ -11,7 +11,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="maksem.va" target="1.5" />
+      <module name="maksem.va" target="8" />
       <module name="ScapeGoatTree" target="1.5" />
     </bytecodeTargetLevel>
   </component>
