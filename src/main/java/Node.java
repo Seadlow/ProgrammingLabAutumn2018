@@ -43,5 +43,6 @@ public class Node<T extends Comparable<T>> {
     public void setRight(Node right) {
         this.right = right;
     }
+
 }
 

@@ -1,7 +1,7 @@
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 
 public class ScapegoatTree<T extends Comparable<T>> {
@@ -11,41 +11,52 @@ public class ScapegoatTree<T extends Comparable<T>> {
     private int maxSize = 0;
     private int size = 0;
 
-
-    public Node insert(T element) {
+    /**
+     * Inserts an element into tree, check it for balance and rebuild if necessary
+     * @param element element you want to insert
+     */
+    void insert(T element) {
         Node inserted = insertIntoTree(element);
         int height = getNodeHeight(inserted);
         if (height > getHAlpha()) {
             Node scapegoat = findScapegoatNode(inserted);
-            Node scapegoatParent = scapegoat.getParent();
-            boolean scapegoatOnParentsLeft = scapegoatParent != null && scapegoat.equals(scapegoatParent.getLeft());
-            Node rebuiltSubtree = rebuildTree(getSubtreeSize(scapegoat), scapegoat);
-            rebuiltSubtree.setParent(scapegoatParent);
-            if (scapegoatParent != null) {
-                if (scapegoatOnParentsLeft) {
-                    scapegoatParent.setLeft(rebuiltSubtree);
-                } else {
-                    scapegoatParent.setRight(rebuiltSubtree);
+            if (nonNull(scapegoat)) {
+                Node scapegoatParent = scapegoat.getParent();
+                boolean scapegoatOnParentsLeft = scapegoatParent != null && scapegoat.equals(scapegoatParent.getLeft());
+                Node rebuiltSubtree = rebuildTree(getSubtreeSize(scapegoat), scapegoat);
+                rebuiltSubtree.setParent(scapegoatParent);
+                if (nonNull(scapegoatParent)) {
+                    if (scapegoatOnParentsLeft) {
+                        scapegoatParent.setLeft(rebuiltSubtree);
+                    } else {
+                        scapegoatParent.setRight(rebuiltSubtree);
+                    }
                 }
+                if (root.equals(scapegoat)) {
+                    root = rebuiltSubtree;
+                }
+                maxSize = size;
             }
-            if (scapegoat == root) {
-                root = rebuiltSubtree;
-            }
-            maxSize = size;
         }
-        return inserted;
     }
 
-    public Node delete(T element) {
-        Node replaceNode = deleteFromTree(element);
+    /**
+     * Delete node from a tree and rebuilds tree
+     * @param element element you want to delete
+     */
+    void delete(T element) {
+        deleteFromTree(element);
         if (size <= alpha * maxSize) {
             root = rebuildTree(size, root);
             maxSize = size;
         }
-        return replaceNode;
     }
 
-    protected Node findScapegoatNode(Node node) {
+    /**
+     * Finds a Node, that became a scapegoat
+     * @param node given
+     */
+    private Node findScapegoatNode(Node node) {
         int size = 1;
         int height = 0;
         int totalSize;
@@ -61,7 +72,8 @@ public class ScapegoatTree<T extends Comparable<T>> {
         return null;
     }
 
-    protected Node rebuildTree(int size, Node scapegoat) {
+
+    private Node rebuildTree(int size, Node scapegoat) {
         List<Node> nodes = new ArrayList<>();
         Node currentNode = scapegoat;
         boolean done = false;
@@ -83,6 +95,11 @@ public class ScapegoatTree<T extends Comparable<T>> {
         return buildTree(nodes, 0, size - 1);
     }
 
+    /**
+     *Builds rebalanced tree
+     * @param nodes List of nodes
+     * @return rebalanced tree
+     */
     private Node buildTree(List<Node> nodes, int start, int end) {
         int middle = (int) Math.ceil(((double) (start + end)) / 2.0);
         if (start > end) {
@@ -91,19 +108,24 @@ public class ScapegoatTree<T extends Comparable<T>> {
         Node node = nodes.get(middle);
         Node leftNode = buildTree(nodes, start, middle - 1);
         node.setLeft(leftNode);
-        if (leftNode != null) {
+        if (nonNull(leftNode)) {
             leftNode.setParent(node);
         }
         Node rightNode = buildTree(nodes, middle + 1, end);
         node.setRight(rightNode);
-        if (rightNode != null) {
+        if (nonNull(rightNode)) {
             rightNode.setParent(node);
         }
         return node;
     }
 
+    /**
+     * Returns Node with the same parent as given one
+     * @param node given Node
+     * @return sibling node
+     */
     private Node getSibling(Node node) {
-        if (node.getParent() != null) {
+        if (nonNull(node.getParent())) {
             if (node.equals(node.getParent().getLeft())) {
                 return node.getParent().getRight();
             } else {
@@ -113,66 +135,76 @@ public class ScapegoatTree<T extends Comparable<T>> {
         return null;
     }
 
-    protected int getSubtreeSize(Node node) {
-        if (node == null) {
+    /**
+     * Finds size of a subtree
+     * @param node given node
+     * @return size of a subtree
+     */
+    int getSubtreeSize(Node node) {
+        if (isNull(node))
             return 0;
-        }
-        if ((node.getLeft() == null) && (node.getRight() == null)) {
+        if ((isNull(node.getLeft())) && (isNull(node.getRight()))) {
             return 1;
         } else {
-            int sum = 1;
-            sum += getSubtreeSize(node.getLeft());
-            sum += getSubtreeSize(node.getRight());
-            return sum;
+            return getSubtreeSize(node.getLeft())
+            + getSubtreeSize(node.getRight()) + 1;
         }
     }
 
-    protected int getNodeHeight(Node node) {
-        if (node == null) {
+    /**
+     * Finds a distance between root and given node
+     * @param node given node
+     * @return height
+     */
+    private int getNodeHeight(Node node) {
+        if (isNull(node)) {
             return -1;
-        } else if (node.getParent() == null) {
+        } else if (isNull(node.getParent())) {
             return 0;
         } else {
             return getNodeHeight(node.getParent()) + 1;
         }
     }
 
-    public Node insertIntoTree(T element) {
-        if (root == null) {
-            root = new Node(element);
-            size++;
-            return root;
-        }
-        Node insertParentNode = null;
-        Node searchTempNode = root;
-        while (searchTempNode != null && searchTempNode.getKey() != null) {
-            insertParentNode = searchTempNode;
-            if (searchTempNode.getKey().compareTo(element) > 0) {
-                searchTempNode = searchTempNode.getLeft();
+    /**
+     * Basic insertion of element. Rewrites connections between elements.
+     * @param element element you want to insert
+     * @return inserted node
+     */
+    private Node insertIntoTree(T element) {
+        Node node = new Node(element);
+        Node x = root;
+        Node y = null;
+        while (nonNull(x)) {
+            y = x;
+            if (node.getKey().compareTo(x.getKey()) < 0) {
+                x = x.getLeft();
             } else {
-                searchTempNode = searchTempNode.getRight();
+                x = x.getRight();
+            }
+            node.setParent(y);
+        }
+        if (isNull(y)) {
+            root = node;
+        } else {
+            if (node.getKey().compareTo(y.getKey()) < 0) {
+                y.setLeft(node);
+            } else {
+                y.setRight(node);
             }
         }
-
-        Node newNode = new Node(element);
-        newNode.setParent(insertParentNode);
-        if (insertParentNode.getKey().compareTo(newNode.getKey()) > 0) {
-            insertParentNode.setLeft(newNode);
-        } else {
-            insertParentNode.setRight(newNode);
-        }
         size++;
-        return newNode;
+        return node;
     }
 
-    public Node deleteFromTree(T element) {
-        Node deleteNode = search(element);
-        return Optional.ofNullable(deleteFromTree(deleteNode)).orElse(null);
-    }
-
-    public Node search(T element) {
+    /**
+     * Basic search of node in a tree.
+     * @param element sought-for key
+     * @return node with a sought-for key
+     */
+    private Node search(T element) {
         Node node = root;
-        while (node != null && node.getKey() != null && node.getKey() != element) {
+        while (nonNull(node) && nonNull(node.getKey()) && node.getKey() != element) {
             if (node.getKey().compareTo(element) > 0) {
                 node = node.getLeft();
             } else {
@@ -182,30 +214,74 @@ public class ScapegoatTree<T extends Comparable<T>> {
         return node;
     }
 
-    protected Node deleteFromTree(Node deleteNode) {
-        Node nodeToReturn = null;
-        if (deleteNode != null) {
-            if (deleteNode.getLeft() == null) {
-                nodeToReturn = transplant(deleteNode, deleteNode.getRight());
-            } else if (deleteNode.getRight() == null) {
-                nodeToReturn = transplant(deleteNode, deleteNode.getLeft());
+    /**
+     * Basic removal of element. Rewrites connections between elements.
+     * @param element element you want to delete
+     */
+    private void deleteFromTree(T element) {
+        Node x = null;
+        Node y;
+        Node node = search(element);
+        if (nonNull(node)) {
+            if (isNull(node.getLeft()) || isNull(node.getRight())) {
+                y = node;
             } else {
-                Node successorNode = getMinimum(deleteNode.getRight());
-                if (!deleteNode.equals(successorNode.getParent())) {
-                    transplant(successorNode, successorNode.getRight());
-                    successorNode.setRight(deleteNode.getRight());
-                    successorNode.getRight().setParent(successorNode);
-                }
-                transplant(deleteNode, successorNode);
-                successorNode.setLeft(deleteNode.getLeft());
-                successorNode.getLeft().setParent(successorNode);
-                nodeToReturn = successorNode;
+                y = treeSuccessor(node);
             }
-            size--;
+            if (nonNull(y.getLeft())) {
+                x = y.getLeft();
+            }
+            if (nonNull(x)) {
+                x.setParent(y.getParent());
+            }
+            if (isNull(y.getParent())) {
+                root = x;
+            } else {
+                if (y.equals(y.getParent().getLeft())) {
+                    y.getParent().setLeft(x);
+                } else {
+                    y.getParent().setRight(x);
+                }
+            }
+            if (y != node) {
+                node.setKey(y.getKey());
+            }
         }
-        return nodeToReturn;
+        size--;
     }
 
+    /**
+     * Finds Node having the least key from bigger than given
+     * @param node given Node
+     * @return found Node
+     */
+    private Node treeSuccessor(Node node) {
+        if (isNull(node.getRight())) {
+            return node.getParent();
+        }
+        return getMinimum(node.getRight());
+    }
+
+    /**
+     * Finds node with minimal value
+     * @param node given Node
+     * @return minimal Node in a tree
+     */
+    private Node getMinimum(Node node) {
+        while (nonNull(node.getLeft())) {
+            node = node.getLeft();
+        }
+        return node;
+    }
+
+
+    private int getHAlpha() {
+        return (int) Math.floor(logarithm(1 / alpha, (double) size));
+    }
+
+    private double logarithm(double base, double value) {
+        return Math.log(value) / Math.log(base);
+    }
 
     public Node getRoot() {
         return root;
@@ -217,34 +293,5 @@ public class ScapegoatTree<T extends Comparable<T>> {
 
     public int getSize() {
         return size;
-    }
-
-    private Node getMinimum(Node node) {
-        while (node.getLeft() != null) {
-            node = node.getLeft();
-        }
-        return node;
-    }
-
-    private Node transplant(Node nodeToReplace, Node newNode) {
-        if (nodeToReplace.getParent() == null) {
-            this.root = newNode;
-        } else if (nodeToReplace == nodeToReplace.getParent().getLeft()) {
-            nodeToReplace.getParent().setLeft(newNode);
-        } else {
-            nodeToReplace.getParent().setRight(newNode);
-        }
-        if (newNode != null) {
-            newNode.setParent(nodeToReplace.getParent());
-        }
-        return newNode;
-    }
-
-    private int getHAlpha() {
-        return (int) Math.floor(logarithm(1 / alpha, (double) size));
-    }
-
-    private double logarithm(double base, double value) {
-        return Math.log(value) / Math.log(base);
     }
 }
